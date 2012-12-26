@@ -58,8 +58,20 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
-	return 0;
+    int *ebp = (int *)read_ebp();
+    /*
+     *Important!
+     *the eip must equal *(ebp + 1), not eip = ebp +1 !!!!!
+     */
+    int *eip = (int *)*(ebp + 1);
+
+    do{
+        cprintf("ebp %x  eip %x\n", *ebp, *eip);
+        ebp = (int *)(*ebp);
+        eip = (int *)*(ebp + 1);
+    }while (ebp);
+
+    return 0;
 }
 
 
