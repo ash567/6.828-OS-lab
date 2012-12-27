@@ -58,8 +58,30 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
-	return 0;
+    int *ebp = (int *)read_ebp();
+    int *eip = (int *)(ebp + 1);
+    int *esp = (int *)(ebp + 2);
+    int i;
+    /*
+     *print info :
+     *    func A's ebp, return val, arg1, arg2 ...
+     */
+    cprintf("Stack Backtrace:");
+    cprintf("(ebp, return val, arg1, arg2...)\n");
+    do{
+        cprintf("ebp %08x  eip %08x args", ebp, *eip);
+
+	for(i = 0; i < 5; i++, esp++){
+		cprintf(" %08x ",*esp);
+	}
+	cprintf("\n");
+
+	ebp = (int *)(*ebp);
+	eip = (int *)(ebp + 1);
+	esp = (int *)(ebp + 2);
+    }while (ebp);
+
+    return 0;
 }
 
 
