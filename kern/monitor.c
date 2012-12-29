@@ -62,6 +62,8 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 	int *eip = (int *)(ebp + 1);
 	int *esp = (int *)(ebp + 2);
 	int i;
+	struct Eipdebuginfo  info;
+	char fun_name[128];
 	/*
 	*print info :
 	*    func A's ebp, return val, arg1, arg2 ...
@@ -75,11 +77,21 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 	}
 	cprintf("\n");
 	
+	debuginfo_eip((uintptr_t)*eip, &info);
+
+	// because eip_fn_name is NOT null terminaled, so trim it.
+	strncpy(fun_name, info.eip_fn_name, (size_t)info.eip_fn_namelen);
+	fun_name[info.eip_fn_namelen] = '\0';
+	//
+	cprintf("     %s:%d %s+%d\n", info.eip_file, info.eip_line, 
+		fun_name, (uint32_t)(*eip-info.eip_fn_addr));	
+
+
 	ebp = (int *)(*ebp);
 	eip = (int *)(ebp + 1);
 	esp = (int *)(ebp + 2);
 	}while (ebp);
-
+	
 	return 0;
 }
 
