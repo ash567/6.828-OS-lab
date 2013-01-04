@@ -138,7 +138,6 @@ mem_init(void)
 	
 	// Permissions: kernel R, user R
 	kern_pgdir[PDX(UVPT)] = PADDR(kern_pgdir) | PTE_U | PTE_P;
-
 	//////////////////////////////////////////////////////////////////////
 	// Allocate an array of npages 'struct PageInfo's and store it in 'pages'.
 	// The kernel uses this array to keep track of physical pages: for
@@ -147,7 +146,6 @@ mem_init(void)
 	// Your code goes here:
 	
 	pages = boot_alloc(npages*sizeof(struct PageInfo));
-
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
 	// up the list of free physical pages. Once we've done so, all further
@@ -155,8 +153,10 @@ mem_init(void)
 	// particular, we can now map memory using boot_map_region
 	// or page_insert
 	page_init();
+	cprintf("ok4\n");
 
 	check_page_free_list(1);
+	panic("ok1 \n");
 	check_page_alloc();
 	check_page();
 
@@ -250,9 +250,15 @@ page_init(void)
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
 	size_t i;
-	for (i = 0; i < npages; i++) {
-		pages[i].pp_ref = 0;
-		pages[i].pp_link = page_free_list;
+	extern char end[];
+	int low_ppn = PGNUM(IOPHYSMEM);
+	int up_ppn = PGNUM(ROUNDUP((char *)end, PGSIZE));
+
+	pages[0].pp_ref = 0;
+	pages[0].pp_link = NULL;
+	for (i = 1; i < npages; i++) {
+		if (low_ppn <= i && i >= up_ppn) continue;
+		pages[i].pp_link = page_free_list; 
 		page_free_list = &pages[i];
 	}
 }
@@ -269,8 +275,20 @@ page_init(void)
 struct PageInfo *
 page_alloc(int alloc_flags)
 {
-	// Fill this function in
-	return 0;
+	struct PageInfo * ptr = NULL;
+
+	if (!page_free_list){
+		return ptr;
+	}
+
+	ptr = page_free_list;
+	page_free_list = ptr->pp_link;
+
+	if (alloc_flags & ALLOC_ZERO){
+		memset((void *)page2kva(ptr), '\0', PGSIZE);		
+	}
+	
+	return ptr;
 }
 
 //
@@ -280,7 +298,8 @@ page_alloc(int alloc_flags)
 void
 page_free(struct PageInfo *pp)
 {
-	// Fill this function in
+	pp->pp_link = page_free_list;
+	page_free_list = pp;
 }
 
 //
