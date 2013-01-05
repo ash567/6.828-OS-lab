@@ -90,14 +90,18 @@ boot_alloc(uint32_t n)
 	// to any kernel code or global variables.
 	if (!nextfree) {
 		extern char end[];
-		nextfree = ROUNDUP((char *) end, PGSIZE);
+		nextfree = ROUNDUP((char *)end, PGSIZE);
+		cprintf("end = %08x\n", end);
 	}
 
 	// Allocate a chunk large enough to hold 'n' bytes, then update
 	// nextfree.  Make sure nextfree is kept aligned
 	// to a multiple of PGSIZE.
 	//
-	
+	if (n == 0)
+	{
+		return nextfree;
+	}	
 	nextfree = ROUNDUP(nextfree, PGSIZE);
 	result = nextfree;
 	nextfree += n;	
@@ -250,17 +254,23 @@ page_init(void)
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
 	size_t i;
-	extern char end[];
+	
+	// PGNUM receive a linear/virtual address
+	// so, the first thing is to translate end&boot_alloc's address
 	int low_ppn = PGNUM(IOPHYSMEM);
-	int up_ppn = PGNUM(ROUNDUP((char *)end, PGSIZE));
+	int up_ppn = PGNUM(PADDR(boot_alloc(0)));
 
 	pages[0].pp_ref = 0;
 	pages[0].pp_link = NULL;
+	page_free_list = NULL;
 	for (i = 1; i < npages; i++) {
-		if (low_ppn <= i && i >= up_ppn) continue;
+		if (low_ppn <= i && i < up_ppn) continue;
 		pages[i].pp_link = page_free_list; 
 		page_free_list = &pages[i];
+		//cprintf("page phyaddr =%08x has been added\n",page2pa(&pages[i]));
+
 	}
+	cprintf("low_ppn=%08x, up_ppn=%08x, i=%d, npages=%d\n",low_ppn, up_ppn, i, npages);
 }
 
 //
@@ -477,9 +487,16 @@ check_page_free_list(bool only_low_memory)
 
 	// if there's a page that shouldn't be on the free list,
 	// try to make sure it eventually causes trouble.
+	int i=0;
 	for (pp = page_free_list; pp; pp = pp->pp_link)
+	{	
 		if (PDX(page2pa(pp)) < pdx_limit)
+		{
 			memset(page2kva(pp), 0x97, 128);
+		}
+		cprintf("2. i=%d,page2pa(pp)=%08x\n",i,page2pa(pp));
+		i++;
+	}
 
 	first_free_page = (char *) boot_alloc(0);
 	for (pp = page_free_list; pp; pp = pp->pp_link) {
@@ -500,6 +517,7 @@ check_page_free_list(bool only_low_memory)
 		else
 			++nfree_extmem;
 	}
+	cprintf("nfree_basemem = %d, nfree_extmem = %d pdx_limit = %d \n", nfree_basemem, nfree_extmem, pdx_limit);
 
 	assert(nfree_basemem > 0);
 	assert(nfree_extmem > 0);
