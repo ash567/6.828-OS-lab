@@ -167,7 +167,6 @@ mem_init(void)
 	cprintf("ok4\n");
 
 	check_page_free_list(1);
-	panic("ok1 \n");
 	check_page_alloc();
 	check_page();
 
@@ -301,10 +300,12 @@ page_alloc(int alloc_flags)
 		return ptr;
 	}
 
-	ptr = page_free_list;
+	ptr = page_free_list;	
 	page_free_list = ptr->pp_link;
+	ptr->pp_link = NULL; // set ptr's node to be alone
 
 	if (alloc_flags & ALLOC_ZERO){
+		// must use kernel virtual address in the call to memset!
 		memset((void *)page2kva(ptr), '\0', PGSIZE);		
 	}
 	
@@ -504,7 +505,7 @@ check_page_free_list(bool only_low_memory)
 		{
 			memset(page2kva(pp), 0x97, 128);
 		}
-		cprintf("2. i=%d,page2pa(pp)=%08x\n",i,page2pa(pp));
+		//cprintf("2. i=%d,page2pa(pp)=%08x\n",i,page2pa(pp));
 		i++;
 	}
 
