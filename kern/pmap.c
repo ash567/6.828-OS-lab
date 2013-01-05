@@ -101,14 +101,21 @@ boot_alloc(uint32_t n)
 	if (n == 0)
 	{
 		return nextfree;
-	}	
-	nextfree = ROUNDUP(nextfree, PGSIZE);
+	}
+	//   A VERY STUPID MISTAKE
+	//   when I use the following code:
+	//   nextfree = ROUNDUP(nextfree, PGSIZE);
+	//   result = nextfree;
+	//   nextfree += n;
+	//   it's wrong, so what the RIGHT useage of ROUNDUP ?
+	//   why is ROUNDUP(n,PGSIZE) ?
 	result = nextfree;
-	nextfree += n;	
+	nextfree += ROUNDUP(n, PGSIZE);	
 	return result;
 }
 
 // Set up a two-level page table:
+//
 //    kern_pgdir is its linear (virtual) address of the root
 //
 // This function only sets up the kernel part of the address space
@@ -260,11 +267,14 @@ page_init(void)
 	int low_ppn = PGNUM(IOPHYSMEM);
 	int up_ppn = PGNUM(PADDR(boot_alloc(0)));
 
-	pages[0].pp_ref = 0;
-	pages[0].pp_link = NULL;
+	for (i = 0; i < npages; i++) {
+		pages[i].pp_link = NULL;
+		pages[i].pp_ref = 0;
+	}
+	
 	page_free_list = NULL;
 	for (i = 1; i < npages; i++) {
-		if (low_ppn <= i && i < up_ppn) continue;
+		if ((low_ppn <= i) && (i < up_ppn)) continue;
 		pages[i].pp_link = page_free_list; 
 		page_free_list = &pages[i];
 		//cprintf("page phyaddr =%08x has been added\n",page2pa(&pages[i]));
