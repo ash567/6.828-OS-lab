@@ -91,7 +91,8 @@ boot_alloc(uint32_t n)
 	if (!nextfree) {
 		extern char end[];
 		nextfree = ROUNDUP((char *)end, PGSIZE);
-		cprintf("end = %08x\n", end);
+		cprintf("end = %08x, ROUNDUP(end, PGSIZE) = %08x\n\n",\
+		       end, ROUNDUP((char *)end, PGSIZE));
 	}
 
 	// Allocate a chunk large enough to hold 'n' bytes, then update
@@ -139,6 +140,9 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// create initial page directory.
 	kern_pgdir = (pde_t *) boot_alloc(PGSIZE);
+	
+	cprintf("kern_pgdir = %08x\n\n", kern_pgdir);
+	
 	memset(kern_pgdir, 0, PGSIZE);
 
 	//////////////////////////////////////////////////////////////////////
@@ -154,9 +158,9 @@ mem_init(void)
 	// The kernel uses this array to keep track of physical pages: for
 	// each physical page, there is a corresponding struct PageInfo in this
 	// array.  'npages' is the number of physical pages in memory.
-	// Your code goes here:
 	
 	pages = boot_alloc(npages*sizeof(struct PageInfo));
+	cprintf("npages PageInfo be stored in %08x, allocated by boot_alloc()\n\n", pages);
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
 	// up the list of free physical pages. Once we've done so, all further
@@ -164,7 +168,6 @@ mem_init(void)
 	// particular, we can now map memory using boot_map_region
 	// or page_insert
 	page_init();
-	cprintf("ok4\n");
 
 	check_page_free_list(1);
 	check_page_alloc();
@@ -279,7 +282,8 @@ page_init(void)
 		//cprintf("page phyaddr =%08x has been added\n",page2pa(&pages[i]));
 
 	}
-	cprintf("low_ppn=%08x, up_ppn=%08x, i=%d, npages=%d\n",low_ppn, up_ppn, i, npages);
+	cprintf("Attention: low_ppn and up_ppn represent the physical page number.\
+		\nlow_ppn=%d, up_ppn=%d, i=%d, npages=%d\n\n",low_ppn, up_ppn, i, npages);
 }
 
 //
@@ -296,7 +300,7 @@ page_alloc(int alloc_flags)
 {
 	struct PageInfo * ptr = NULL;
 
-	if (!page_free_list){
+	if (!page_free_list) {
 		return ptr;
 	}
 
@@ -304,7 +308,7 @@ page_alloc(int alloc_flags)
 	page_free_list = ptr->pp_link;
 	ptr->pp_link = NULL; // set ptr's node to be alone
 
-	if (alloc_flags & ALLOC_ZERO){
+	if (alloc_flags & ALLOC_ZERO) {
 		// must use kernel virtual address in the call to memset!
 		memset((void *)page2kva(ptr), '\0', PGSIZE);		
 	}
@@ -359,7 +363,26 @@ page_decref(struct PageInfo* pp)
 pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
-	// Fill this function in
+	pde_t *pd = pgdir + PDX(va);
+	pte_t *pt;
+	struct PageInfo *newpage;
+
+	if ( *pd & PTE_P) {
+		pt = (pte_t *)KADDR(PTE_ADDR(*pd));
+       		return 	(pte_t *)(pt + PTX(va));	
+	}
+	else if (create == true) {
+		newpage = page_alloc(0);
+		if (newpage == NULL) 
+			return NULL;	
+		memset(page2kva(newpage), 0, PGSIZE);
+		newpage->pp_ref = 1;
+		
+		// fill up the information in PTE
+		*pd = PADDR(page2kva(newpage))|PTE_U|PTE_W|PTE_P;
+		pt = (pte_t *)KADDR(PTE_ADDR(*pd));
+		return (pte_t *)(pt + PTX(va));
+	}
 	return NULL;
 }
 
@@ -376,7 +399,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
-	// Fill this function in
+	
 }
 
 //
@@ -528,7 +551,8 @@ check_page_free_list(bool only_low_memory)
 		else
 			++nfree_extmem;
 	}
-	cprintf("nfree_basemem = %d, nfree_extmem = %d pdx_limit = %d \n", nfree_basemem, nfree_extmem, pdx_limit);
+	cprintf("nfree_basemem = %d, nfree_extmem = %d pdx_limit = %d \n\n",\
+	       	nfree_basemem, nfree_extmem, pdx_limit);
 
 	assert(nfree_basemem > 0);
 	assert(nfree_extmem > 0);
