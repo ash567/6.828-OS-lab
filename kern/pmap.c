@@ -182,8 +182,11 @@ mem_init(void)
 	//    - the new image at UPAGES -- kernel R, user R
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
-	// Your code goes here:
-
+	
+	boot_map_region(kern_pgdir, UPAGES,\
+		       	ROUNDUP(npages*sizeof(struct PageInfo),PGSIZE),\
+			PADDR((void *) pages),\
+			PTE_U); //PADDR return (void *)
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
 	// stack.  The kernel stack grows down from virtual address KSTACKTOP.
@@ -194,7 +197,9 @@ mem_init(void)
 	//       the kernel overflows its stack, it will fault rather than
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
-	// Your code goes here:
+	
+	boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE,\
+			KSTKSIZE, PADDR((void *) bootstack), PTE_W);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -203,7 +208,9 @@ mem_init(void)
 	// We might not have 2^32 - KERNBASE bytes of physical memory, but
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
-	// Your code goes here:
+
+	boot_map_region(kern_pgdir, KERNBASE, ~KERNBASE + 1,(physaddr_t)0, PTE_W);
+	// 2^32 - KERNBASE = (2^32 -1 - KERNBASE)+1 = ~KERNBASE +1
 
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
@@ -283,7 +290,8 @@ page_init(void)
 
 	}
 	cprintf("Attention: low_ppn and up_ppn represent the physical page number.\
-		\nlow_ppn=%d, up_ppn=%d, i=%d, npages=%d\n\n",low_ppn, up_ppn, i, npages);
+		\nlow_ppn=%d, up_ppn=%d, page_free_list = %08x \n\n",low_ppn, up_ppn,\
+	      page_free_list );
 }
 
 //
@@ -369,6 +377,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 
 	if ( *pd & PTE_P) {
 		pt = (pte_t *)KADDR(PTE_ADDR(*pd));
+		//cprintf("pt+PTX(va) = %08x ,va = %08x\n", pt+PTX(va), a);
        		return 	(pte_t *)(pt + PTX(va));	
 	}
 	else if (create == true) {
@@ -380,7 +389,10 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 		
 		// fill up the information in PTE
 		*pd = PADDR(page2kva(newpage))|PTE_U|PTE_W|PTE_P;
+
+		cprintf("*pd=PADDR(page2kva(newpage)) = %08x\n", PADDR(page2kva(newpage)));
 		pt = (pte_t *)KADDR(PTE_ADDR(*pd));
+		cprintf("KADDR(PTE_ADDR(*pd)+PTX(va) = %08x\n\n", KADDR(PTE_ADDR(*pd))+PTX(va));
 		return (pte_t *)(pt + PTX(va));
 	}
 	return NULL;
@@ -399,7 +411,21 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
+	pte_t  *pt;
+	size_t     s;
 	
+	va = ROUNDDOWN(va, PGSIZE);
+
+	for (s = 0; s < size; s += PGSIZE) {
+		pt = pgdir_walk(pgdir, (void *)va, 1);
+		// why this physical address pa needn't use KADDR(pa)
+		// ???????????????
+		*pt = pa|perm|PTE_P;
+
+		va += PGSIZE;
+		pa += PGSIZE;
+	}		
+
 }
 
 //
@@ -430,7 +456,23 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
-	// Fill this function in
+	pte_t *pte = pgdir_walk(pgdir, va, 1);
+	if (pte == NULL) {
+		return -E_NO_MEM;
+	}
+
+	if (*pte & PTE_P) {
+		if (PTE_ADDR(*pte) == page2pa(pp)) {
+			tlb_invalidate(pgdir, va);
+			pp->pp_ref --;
+		} else {
+			page_remove(pgdir, va);
+		}
+	}
+
+	*pte = page2pa(pp)|perm|PTE_P;
+	pp->pp_ref ++;
+
 	return 0;
 }
 
@@ -448,7 +490,15 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 struct PageInfo *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
-	// Fill this function in
+	pte_t *pte = pgdir_walk(pgdir, va, 0);
+
+	if (pte_store != 0) {
+		*pte_store = pte;
+	}
+
+	if (pte != NULL && (*pte & PTE_P)) {
+		return pa2page(PTE_ADDR(*pte));
+	}
 	return NULL;
 }
 
@@ -470,7 +520,14 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 void
 page_remove(pde_t *pgdir, void *va)
 {
-	// Fill this function in
+	pte_t *pte;
+	struct PageInfo *phypage = page_lookup(pgdir, va, &pte);
+
+	if (phypage != NULL) {
+		page_decref(phypage);
+		*pte = 0;
+		tlb_invalidate(pgdir, va);
+	}
 }
 
 //
