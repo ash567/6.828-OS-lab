@@ -79,7 +79,9 @@ pa2page(physaddr_t pa)
 		panic("pa2page called with invalid pa");
 	return &pages[PGNUM(pa)];
 }
-
+/*
+ * map a PageInfo pointer to a real page address.
+ */
 static inline void*
 page2kva(struct PageInfo *pp)
 {

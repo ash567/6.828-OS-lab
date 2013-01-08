@@ -25,6 +25,7 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Trace the EIP and EBP in function call", mon_backtrace},
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -59,7 +60,38 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
+	int *ebp = (int *)read_ebp();
+	int *eip = (int *)(ebp + 1);
+	int *esp = (int *)(ebp + 2);
+	int i;
+	struct Eipdebuginfo  info;
+	/*
+	*print info :
+	*    func A's ebp, return val, arg1, arg2 ...
+	*/
+	cprintf("Stack Backtrace:");
+	cprintf("(ebp, return val, arg1, arg2...)\n");
+	do{
+		cprintf("ebp %08x  eip %08x args", ebp, *eip);
+		for(i = 0; i < 5; i++, esp++){
+		cprintf(" %08x ",*esp);
+	}
+	cprintf("\n");
+	
+	debuginfo_eip((uintptr_t)*eip, &info);
+
+	// printf format string provide an easy way to print a non-null-terminated string. 
+	// printf("%.*s", length, string);
+	
+	cprintf("     %s:%d %.*s+%d\n", info.eip_file, info.eip_line, 
+		info.eip_fn_namelen, info.eip_fn_name, (uint32_t)(*eip-info.eip_fn_addr));	
+
+
+	ebp = (int *)(*ebp);
+	eip = (int *)(ebp + 1);
+	esp = (int *)(ebp + 2);
+	}while (ebp);
+	
 	return 0;
 }
 
