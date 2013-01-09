@@ -166,6 +166,8 @@ mem_init(void)
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	
 	envs = boot_alloc(NENV * sizeof(struct Env));
+	cprintf("npages envs be stored in %08x, allocated by boot_alloc()\n\n", envs);
+
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
 	// up the list of free physical pages. Once we've done so, all further
@@ -384,6 +386,9 @@ page_decref(struct PageInfo* pp)
 // Hint 3: look at inc/mmu.h for useful macros that mainipulate page
 // table and page directory entries.
 //
+//终于懂了这个函数！！！
+//一级是页目录表，二级是页表，
+//
 pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
@@ -391,11 +396,10 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	pte_t *pt;
 	struct PageInfo *newpage;
 
-	if ( *pd & PTE_P) {
+	if ( *pd & PTE_P) { //页表存在，则返回页表项的内核虚拟地址
 		pt = (pte_t *)KADDR(PTE_ADDR(*pd));
-		//cprintf("pt+PTX(va) = %08x ,va = %08x\n", pt+PTX(va), a);
        		return 	(pte_t *)(pt + PTX(va));	
-	}
+	} // 二级页表不存在，则分配一Page 作为 *页表* 
 	else if (create == true) {
 		newpage = page_alloc(0);
 		if (newpage == NULL) 
@@ -406,10 +410,11 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 		// fill up the information in PTE
 		*pd = PADDR(page2kva(newpage))|PTE_U|PTE_W|PTE_P;
 
-		cprintf("*pd=PADDR(page2kva(newpage)) = %08x\n", PADDR(page2kva(newpage)));
+//cprintf("*pd=PADDR(page2kva(newpage)) = %08x\n", PADDR(page2kva(newpage)));
 		pt = (pte_t *)KADDR(PTE_ADDR(*pd));
-		cprintf("KADDR(PTE_ADDR(*pd)+PTX(va) = %08x\n\n", KADDR(PTE_ADDR(*pd))+PTX(va));
-		return (pte_t *)(pt + PTX(va));
+//cprintf("KADDR(PTE_ADDR(*pd)+PTX(va) = %08x\n\n", KADDR(PTE_ADDR(*pd))+PTX(va));
+		return (pte_t *)(pt + PTX(va));// 该虚拟地址在页表中的偏移
+						//获得对应的页表项
 	}
 	return NULL;
 }
@@ -437,11 +442,10 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 		// why this physical address pa needn't use KADDR(pa)
 		// ???????????????
 		*pt = pa|perm|PTE_P;
-
+		
 		va += PGSIZE;
 		pa += PGSIZE;
 	}		
-
 }
 
 //
