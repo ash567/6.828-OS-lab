@@ -300,7 +300,7 @@ page_init(void)
 	}
 	
 	page_free_list = NULL;
-	for (i = 1; i < npages; i++) {
+	for (i = 1; i < npages ; i++) {
 		if ((low_ppn <= i) && (i < up_ppn)) continue;
 		pages[i].pp_link = page_free_list; 
 		page_free_list = &pages[i];
