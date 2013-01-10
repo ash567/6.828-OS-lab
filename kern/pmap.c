@@ -154,6 +154,9 @@ mem_init(void)
 	
 	// Permissions: kernel R, user R
 	kern_pgdir[PDX(UVPT)] = PADDR(kern_pgdir) | PTE_U | PTE_P;
+	cprintf("PDX(UVPT)=%d, PDX(kern_pgdir) = %d\n\n", PDX(UVPT), PDX(kern_pgdir));
+	cprintf("PDX(UTOP)=%d , PDX()*sizeof(pde_t)=%d\n\n", PDX(UTOP), PDX(UTOP)*sizeof(pde_t));
+
 	//////////////////////////////////////////////////////////////////////
 	// Allocate an array of npages 'struct PageInfo's and store it in 'pages'.
 	// The kernel uses this array to keep track of physical pages: for

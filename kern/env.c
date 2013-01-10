@@ -185,12 +185,16 @@ env_setup_vm(struct Env *e)
 	//	pp_ref for env_free to work correctly.
 	//    - The functions in kern/pmap.h are handy.
 
-	// LAB 3: Your code here.
+	e->env_pgdir = pgdir_walk(kern_pgdir, page2kva(p), true);
+	memcpy(e->env_pgdir, kern_pgdir, PGSIZE);
+	memset(e->env_pgdir, 0, PDX(UTOP) * sizeof(pde_t));
 
+	p->pp_ref++;
+	
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
 	e->env_pgdir[PDX(UVPT)] = PADDR(e->env_pgdir) | PTE_P | PTE_U;
-
+	cprintf("PDX(UVPT)=%d , env_pgdir = %x\n\n", PDX(UVPT), e->env_pgdir);
 	return 0;
 }
 
