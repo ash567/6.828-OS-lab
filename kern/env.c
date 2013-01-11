@@ -278,6 +278,27 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   'va' and 'len' values that are not page-aligned.
 	//   You should round va down, and round (va + len) up.
 	//   (Watch out for corner-cases!)
+	
+	int ret;
+	struct PageInfo *pp;
+
+	ROUNDDOWN(va, PGSIZE);
+	ROUNDUP(va + len, PGSIZE);
+	
+	for (; len > 0; len -= PGSIZE, va += PGSIZE) {
+		pp = page_alloc(0); 
+
+		if ( pp == NULL) {
+			panic("in region_alloc: pp == NULL\n");
+		}
+
+		ret = page_insert(e->env_pgdir, pp, va, PTE_U|PTE_W); 
+
+		if ( ret != 0) {
+			panic("in region_alloc: ret != 0\n");
+		}
+	}
+
 }
 
 //
@@ -351,7 +372,18 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
 void
 env_create(uint8_t *binary, size_t size, enum EnvType type)
 {
-	// LAB 3: Your code here.
+	struct Env *e;
+	int ret;
+
+	ret = env_alloc(&e, 0);
+
+	if (ret == 0) {
+		panic("in env_create: ret == 0\n");
+	}
+
+	e->env_type = type;
+	
+	load_icode(e, binary, size);
 }
 
 //
