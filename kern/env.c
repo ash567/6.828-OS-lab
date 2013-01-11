@@ -354,12 +354,21 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
 	//  to make sure that the environment starts executing there.
 	//  What?  (See env_run() and env_pop_tf() below.)
 
-	// LAB 3: Your code here.
+	struct Elf *elfhead = (struct Elf *)binary;
+	struct Proghdr *ph, *eph;
 
+	if (elfhead->e_magic != ELF_MAGIC) {
+		panic("in load_icode: ELF_MAGIC\n");
+	}
+
+	ph = (struct Proghdr *)((uint8_t *)elfhead + elfhead->e_phoff);
+	eph = ph + elfhead->e_phnum;
+
+	lcr3();
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
-
-	// LAB 3: Your code here.
+	
+	region_alloc(e, (void *)(USTACKTOP - PGSIZE), PGSIZE);
 }
 
 //

@@ -402,7 +402,8 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	if ( *pd & PTE_P) { //页表存在，则返回页表项的内核虚拟地址
 		pt = (pte_t *)KADDR(PTE_ADDR(*pd));
        		return 	(pte_t *)(pt + PTX(va));	
-	} // 二级页表不存在，则分配一Page 作为 *页表* 
+	} // 二级页表不存在，则分配一Page 作为二级 *页表*,
+          // 但是没有分配真正的 *页*	
 	else if (create == true) {
 		newpage = page_alloc(0);
 		if (newpage == NULL) 
@@ -432,6 +433,8 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 // mapped pages.
 //
 // Hint: the TA solution uses pgdir_walk
+//
+// what this function do is to setup the page table entry.
 static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
@@ -442,8 +445,6 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 
 	for (s = 0; s < size; s += PGSIZE) {
 		pt = pgdir_walk(pgdir, (void *)va, 1);
-		// why this physical address pa needn't use KADDR(pa)
-		// ???????????????
 		*pt = pa|perm|PTE_P;
 		
 		va += PGSIZE;
