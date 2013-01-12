@@ -185,7 +185,13 @@ env_setup_vm(struct Env *e)
 	//	pp_ref for env_free to work correctly.
 	//    - The functions in kern/pmap.h are handy.
 
-	e->env_pgdir = pgdir_walk(kern_pgdir, page2kva(p), true);
+	//  is this wrong ?? 
+	//  这里分配了新页要不要在内核页目录体现出来？
+	//  内核页目录，页表不是体现所有的内存分配情况吗？
+	//
+	//e->env_pgdir = pgdir_walk(kern_pgdir, page2kva(p), true);
+	
+	e->env_pgdir = (pde_t *)page2kva(p);
 	memcpy(e->env_pgdir, kern_pgdir, PGSIZE);
 	memset(e->env_pgdir, 0, PDX(UTOP) * sizeof(pde_t));
 
@@ -364,7 +370,23 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
 	ph = (struct Proghdr *)((uint8_t *)elfhead + elfhead->e_phoff);
 	eph = ph + elfhead->e_phnum;
 
-	lcr3();
+	lcr3(PADDR((void *)e->env_pgdir));
+
+	//转到该进程的页目录/页表，把可执行代码映射到内存，并填充页表项
+	// 填充完了记得切换回到内核页表哦，亲！！
+	
+	for (; ph < eph; ph++) {
+		if (ph->p_type == ELF_PROG_LOAD) {
+			region_alloc(e, (void *)ph->p_va, ph->p_memsz);
+			memset((void *)ph->va, 0, ph->p_memsz);
+			memmove((void *)ph->p_va, binary+ph->p_offset, ph->p_filesz);
+		}
+	}
+
+	lcr3(PADDR((void *)kern_pgdir));
+
+	e->env_tf.tf_eip = elfhead->e_entry;
+
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 	
