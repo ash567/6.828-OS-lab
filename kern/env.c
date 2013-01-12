@@ -290,8 +290,8 @@ region_alloc(struct Env *e, void *va, size_t len)
 
 	ROUNDDOWN(va, PGSIZE);
 	ROUNDUP(va + len, PGSIZE);
-	
-	for (; len > 0; len -= PGSIZE, va += PGSIZE) {
+
+	for (; (int)len > 0; len -= PGSIZE, va += PGSIZE) {
 		pp = page_alloc(0); 
 
 		if ( pp == NULL) {
@@ -378,7 +378,7 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
 	for (; ph < eph; ph++) {
 		if (ph->p_type == ELF_PROG_LOAD) {
 			region_alloc(e, (void *)ph->p_va, ph->p_memsz);
-			memset((void *)ph->va, 0, ph->p_memsz);
+			memset((void *)ph->p_va, 0, ph->p_memsz);
 			memmove((void *)ph->p_va, binary+ph->p_offset, ph->p_filesz);
 		}
 	}
@@ -408,7 +408,7 @@ env_create(uint8_t *binary, size_t size, enum EnvType type)
 
 	ret = env_alloc(&e, 0);
 
-	if (ret == 0) {
+	if (ret != 0) {
 		panic("in env_create: ret == 0\n");
 	}
 
@@ -529,8 +529,21 @@ env_run(struct Env *e)
 	//	and make sure you have set the relevant parts of
 	//	e->env_tf to sensible values.
 
-	// LAB 3: Your code here.
+	//  考虑重复切换到当前环境 
+	if (curenv != e) {
+		curenv->env_status = ENV_RUNNABLE;
+		curenv = e;
+		curenv->env_status = ENV_RUNNING;
+		curenv->env_runs++;
+		lcr3(PADDR((void *)curenv->env_pgdir));
+	}
 
-	panic("env_run not yet implemented");
+	env_pop_tf(&e->env_tf);
+
+
+
+
+
+
 }
 
