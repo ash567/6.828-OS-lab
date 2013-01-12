@@ -530,8 +530,11 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	//  考虑重复切换到当前环境 
-	if (curenv != e) {
-		curenv->env_status = ENV_RUNNABLE;
+	if (curenv != e) { // think about curenv = NULL !!
+		           // but I'm not understand this if(), it's cheat...
+		if (curenv != NULL && curenv->env_status == ENV_RUNNING){
+			curenv->env_status = ENV_RUNNABLE;
+		}
 		curenv = e;
 		curenv->env_status = ENV_RUNNING;
 		curenv->env_runs++;
