@@ -232,7 +232,13 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
-	panic("hello  world");
+	// becase the cs register's last Two bits is CPL.
+	//  00 is ring0, 11 is ring3
+	
+	if ((tf->tf_cs & 3) == 0) {
+		panic("O... kernel has a page fault, it isn't allowed!!");
+	}
+
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
 
