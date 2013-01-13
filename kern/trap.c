@@ -25,6 +25,7 @@ struct Pseudodesc idt_pd = {
 	sizeof(idt) - 1, (uint32_t) idt
 };
 
+extern long isrs[256];
 
 static const char *trapname(int trapno)
 {
@@ -64,7 +65,14 @@ trap_init(void)
 {
 	extern struct Segdesc gdt[];
 
-	// LAB 3: Your code here.
+	// LAB 3:Your code here.
+	int i;
+	for (i = 0; i < 256; i++) {
+		SETGATE(idt[i], 1, GD_KT, isrs[i], 0);
+	}
+
+	SETGATE(idt[T_BRKPT], 1, GD_KT, isrs[T_BRKPT], 3);
+	SETGATE(idt[T_SYSCALL], 1, GD_KT, isrs[T_SYSCALL], 3);
 
 	// Per-CPU setup 
 	trap_init_percpu();

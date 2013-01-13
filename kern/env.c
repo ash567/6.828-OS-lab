@@ -543,10 +543,5 @@ env_run(struct Env *e)
 
 	env_pop_tf(&e->env_tf);
 
-
-
-
-
-
 }
 
