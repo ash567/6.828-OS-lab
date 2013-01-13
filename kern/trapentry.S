@@ -56,16 +56,16 @@ TRAPHANDLER_NOEC(_overflow, T_OFLOW)              // 4 overflow
 TRAPHANDLER_NOEC(_bounds_check, T_BOUND)          // 5 bounds check
 TRAPHANDLER_NOEC(_illegal_opcode, T_ILLOP)        // 6 illegal opcode
 TRAPHANDLER_NOEC(_dev_not_avail, T_DEVICE)        // 7 device not available
-TRAPHANDLER_NOEC(_double_fault, T_DBLFLT)         // 8 double fault
+TRAPHANDLER(_double_fault, T_DBLFLT)         // 8 double fault
 // 9 is a reserved interrupt 
-TRAPHANDLER_NOEC(_invalid_tss, T_TSS)            // 10 invalid task switch segment
-TRAPHANDLER_NOEC(_segment_not_present, T_SEGNP)  // 11 segment not present
-TRAPHANDLER_NOEC(_stack_exception, T_STACK)      // 12 stack exception 
-TRAPHANDLER_NOEC(_general_protect, T_GPFLT)      // 13 general protection fault
-TRAPHANDLER_NOEC(_page_fault, T_PGFLT)           // 14 page fault 
+TRAPHANDLER(_invalid_tss, T_TSS)            // 10 invalid task switch segment
+TRAPHANDLER(_segment_not_present, T_SEGNP)  // 11 segment not present
+TRAPHANDLER(_stack_exception, T_STACK)      // 12 stack exception 
+TRAPHANDLER(_general_protect, T_GPFLT)      // 13 general protection fault
+TRAPHANDLER(_page_fault, T_PGFLT)           // 14 page fault 
 // 15 is reserved too
 TRAPHANDLER_NOEC(_fp_err, T_FPERR)               // 16 floating point error 
-TRAPHANDLER_NOEC(_alig_check, T_ALIGN)           // 17 aligment check 
+TRAPHANDLER(_alig_check, T_ALIGN)           // 17 aligment check 
 TRAPHANDLER_NOEC(_machine_check, T_MCHK)         // 18 machine check 
 TRAPHANDLER_NOEC(_simd_fp_err, T_SIMDERR)        // 19 SIMD floating point error 
 
