@@ -415,6 +415,7 @@ class Runner():
         finally:
             # damn it! try to kill but timeout!
             # just simply return and manually killall qemu
+            os.system("killall qemu")
             return
             # Shutdown QEMU
             try:
