@@ -171,9 +171,8 @@ mem_init(void)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
 
-    cprintf("...%x\n", page2pa(pages));
-
-    boot_map_region(kern_pgdir, UPAGES, n, page2pa(pages), PTE_U);
+    // 'pages' is kva
+    boot_map_region(kern_pgdir, UPAGES, n, (physaddr_t) PADDR(pages), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -187,7 +186,9 @@ mem_init(void)
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
 
-    boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, (physaddr_t) bootstack, PTE_W);
+    // 'bootstack' is kva
+    boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, (physaddr_t) PADDR(bootstack), PTE_W);
+    // And [KSTACKTOP-PTSIZE, KSTACKTOP-KSTKSIZE] not backed
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -198,13 +199,10 @@ mem_init(void)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
 
-    boot_map_region(kern_pgdir, KERNBASE, ~KERNBASE + 1, 0, PTE_W);
+    boot_map_region(kern_pgdir, KERNBASE, ~KERNBASE + 1, (physaddr_t) 0, PTE_W);
 
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
-
-    // Remove this line when you're ready to test this function.
-	//panic("mem_init: This function is not finished\n");
 
 	// Switch from the minimal entry page directory to the full kern_pgdir
 	// page table we just created.	Our instruction pointer should be
@@ -226,6 +224,9 @@ mem_init(void)
 
 	// Some more checks, only possible after kern_pgdir is installed.
 	check_page_installed_pgdir();
+    
+    // Remove this line when you're ready to test this function.
+	//panic("mem_init: This function is not finished\n");
 }
 
 // --------------------------------------------------------------
@@ -652,10 +653,8 @@ check_kern_pgdir(void)
 
 	// check pages array
 	n = ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE);
-	for (i = 0; i < n; i += PGSIZE) {
-		cprintf("%x %x\n", check_va2pa(pgdir, UPAGES + i), PADDR(pages) + i);
+	for (i = 0; i < n; i += PGSIZE)
 		assert(check_va2pa(pgdir, UPAGES + i) == PADDR(pages) + i);
-    }
 
 	// check phys mem
 	for (i = 0; i < npages * PGSIZE; i += PGSIZE)
