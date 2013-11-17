@@ -11,6 +11,7 @@
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
 #include <kern/trap.h>
+#include <kern/pmap.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -25,6 +26,12 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+    { "showmappings", "Display the physical pages mappings and permission\
+ bits that apply to the pages", mon_showmappings },
+    { "setmappings", "Set new mapping on a virtual address", mon_setmappings },
+    { "clearmappings", "Set new mapping on a virtual address", mon_clearmappings },
+    { "changepermission", "changepermission permission on mapping page", mon_changepermission },
+    { "dumpcontents", "dump contents on a virtual/physical address", mon_dumpcontents },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -36,7 +43,7 @@ mon_help(int argc, char **argv, struct Trapframe *tf)
 	int i;
 
 	for (i = 0; i < NCOMMANDS; i++)
-		cprintf("%s - %s\n", commands[i].name, commands[i].desc);
+		cprintf("%d) %s - %s\n", i, commands[i].name, commands[i].desc);
 	return 0;
 }
 
@@ -60,10 +67,176 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
+	uint32_t *ebp, *eip;
+	uint32_t arg0, arg1, arg2, arg3, arg4;
+	struct Eipdebuginfo info;
+
+	ebp = (uint32_t*) read_ebp();
+
+	cprintf("Stack backtrace:\n");
+	while (ebp != 0) {
+		eip = (uint32_t*) ebp[1];
+		arg0 = ebp[2];
+		arg1 = ebp[3];
+		arg2 = ebp[4];
+		arg3 = ebp[5];
+		arg4 = ebp[6];
+		cprintf("  ebp %08x  eip %08x  args %08x %08x %08x %08x %08x\n",
+			ebp, eip, arg0, arg1, arg2, arg3, arg4);
+		debuginfo_eip((uintptr_t) eip, &info);
+		cprintf("         %s:%d: %.*s+%d\n", info.eip_file, info.eip_line, info.eip_fn_namelen, info.eip_fn_name, info.eip_fn_addr);
+		ebp = (uint32_t*) ebp[0];
+	}
 	return 0;
 }
 
+int
+mon_showmappings(int argc, char **argv, struct Trapframe *tf) {
+    uint32_t lower, upper, cur, tmp;
+    pte_t *page_table_entry;
 
+    if (argc != 3) {
+        cprintf("usage: showmappings LOWER_ADDR UPPER_ADDR\n");
+        return 0;
+    }
+
+    lower = strtol(argv[1], 0, 16);
+    upper = strtol(argv[2], 0, 16);
+    if (lower > upper) {
+        tmp = lower; lower = upper; upper = tmp;
+    }
+    lower = ROUNDDOWN(lower, PGSIZE);
+    upper = ROUNDUP(upper, PGSIZE);
+
+    // 'lower' and 'upper' are virtual addresses
+    cur = lower;
+    while (cur <= upper) {
+        page_table_entry = pgdir_walk(kern_pgdir, (void *) cur, 0);
+        cprintf("va [0x%x, 0x%x) -> ", cur, cur + PGSIZE);
+
+        if (page_table_entry && (*page_table_entry & PTE_P)) {
+            cprintf("pa [0x%x, 0x%x) ", PTE_ADDR(*page_table_entry), PTE_ADDR(*page_table_entry) + PGSIZE);
+            cprintf(" permission: %s, %s", (*page_table_entry & PTE_U) ? "USER": "SUPERVISOR", (*page_table_entry & PTE_W) ? "READ/WRITE": "READ ONLY");
+        } else {
+            cprintf("no mapped");
+        }
+        cprintf("\n");
+        cur += PGSIZE;
+    }
+    return 0;
+}
+
+int
+mon_setmappings(int argc, char **argv, struct Trapframe *tf) {
+    uint32_t va, pa;
+    char perm[2];
+    int perm_int;
+
+    if (argc != 4 || strlen(argv[3]) != 2) {
+        cprintf("usage: setmappings VIR_ADDR PHYS_ADDR PERMISSION\n");
+        cprintf("       PERMISSION should be one of \"UR\", \"UW\", \"SR\", \"SW\"\n");
+        return 0;
+    }
+
+    va = strtol(argv[1], 0, 16);
+    pa = strtol(argv[2], 0, 16);
+    strcpy(perm, argv[3]);
+    va = ROUNDDOWN(va, PGSIZE);
+    pa = ROUNDDOWN(pa, PGSIZE);
+
+    argv[2] = argv[1];
+    mon_showmappings(3, argv, tf);
+
+    perm_int = 0;
+    if (perm[0] == 'U') perm_int |= PTE_U;
+    if (perm[1] == 'W') perm_int |= PTE_W;
+
+    page_insert(kern_pgdir, pa2page(pa), (void *)va, perm_int);
+
+    mon_showmappings(3, argv, tf);
+
+    return 0;
+}
+
+int
+mon_clearmappings(int argc, char **argv, struct Trapframe *tf) {
+    uint32_t va;
+
+    if (argc != 2) {
+        cprintf("usage: clearmappings VIR_ADDR\n");
+        return 0;
+    }
+
+    va = strtol(argv[1], 0, 16);
+    va = ROUNDDOWN(va, PGSIZE);
+
+    argv[2] = argv[1];
+    mon_showmappings(3, argv, tf);
+    page_remove(kern_pgdir, (void *)va);
+    mon_showmappings(3, argv, tf);
+
+    return 0;
+}
+
+int
+mon_changepermission(int argc, char **argv, struct Trapframe *tf) {
+    uint32_t va;
+    char perm[2];
+    pte_t *page_table_entry;
+
+    if (argc != 3 || strlen(argv[2]) != 2) {
+        cprintf("usage: changepermission ADDR PERMISSION\n");
+        cprintf("       PERMISSION should be one of \"UR\", \"UW\", \"SR\", \"SW\"\n");
+        return 0;
+    }
+
+    va = strtol(argv[1], 0, 16);
+    strcpy(perm, argv[2]);
+    va = ROUNDDOWN(va, PGSIZE);
+
+    argv[2] = argv[1];
+    mon_showmappings(argc, argv, tf);
+
+    page_table_entry = pgdir_walk(kern_pgdir, (void *) va, 0);
+    *page_table_entry = PTE_ADDR(*page_table_entry) | PTE_P;
+
+    if (perm[0] == 'U') *page_table_entry |= PTE_U;
+    if (perm[1] == 'W') *page_table_entry |= PTE_W;
+
+    mon_showmappings(argc, argv, tf);
+
+    return 0;
+}
+
+int
+mon_dumpcontents(int argc, char **argv, struct Trapframe *tf) {
+    uint32_t addr;
+    int size, i, j;
+
+    if (argc != 4) {
+        cprintf("usage: dumpcontents virtual/physical LOWER_ADDR UPPER_ADDR\n");
+        return 0;
+    }
+
+    addr = strtol(argv[2], 0, 16);
+    addr = ROUNDDOWN(addr, PGSIZE);
+    if (!strcmp(argv[1], "physical")) addr += KERNBASE;
+    size = strtol(argv[3], 0, 10);
+
+    i = 0;
+    while (i < size) {
+        cprintf("0x%08x: ", addr);
+        j = 0;
+        while (j < 4 && i < size) { 
+            cprintf("0x%08x  ", *(uint32_t *) addr);
+            addr += 4;
+            j++;
+            i++;
+        }
+        cprintf("\n");
+    }
+    return 0;
+}
 
 /***** Kernel monitor command interpreter *****/
 
