@@ -284,7 +284,6 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   'va' and 'len' values that are not page-aligned.
 	//   You should round va down, and round (va + len) up.
 	//   (Watch out for corner-cases!)
-/*
     struct PageInfo *p;
     int r;
     void *va_begin = ROUNDDOWN(va, PGSIZE);
@@ -294,31 +293,11 @@ region_alloc(struct Env *e, void *va, size_t len)
     for (i = va_begin; i < va_end; i += PGSIZE) {
         if (!(p = page_alloc(0)))
             panic("region_alloc: allocation for env e failed.");
-        if ((r = page_insert(e->env_pgdir, p, va, PTE_U | PTE_W)) < 0) {
+        if ((r = page_insert(e->env_pgdir, p, i, PTE_U | PTE_W)) < 0) {
             cprintf("region_alloc: %e\n", r);
             panic("region alloc: insertion for env e failed.");
         }
     }
-*/
-	int ret;
-	struct PageInfo *pp;
-
-	ROUNDDOWN(va, PGSIZE);
-	ROUNDUP(va + len, PGSIZE);
-
-	for (; (int)len > 0; len -= PGSIZE, va += PGSIZE) {
-		pp = page_alloc(0); 
-
-		if ( pp == NULL) {
-			panic("in region_alloc: pp == NULL\n");
-		}
-
-		ret = page_insert(e->env_pgdir, pp, va, PTE_U|PTE_W); 
-
-		if ( ret != 0) {
-			panic("in region_alloc: ret != 0\n");
-		}
-	}
 }
 
 //
@@ -374,7 +353,6 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
 	//  to make sure that the environment starts executing there.
 	//  What?  (See env_run() and env_pop_tf() below.)
 
-/*
 	// LAB 3: Your code here.
     
     // copy from ./boot/main.c 
@@ -394,8 +372,6 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
             if (ph->p_memsz < ph->p_filesz)
                 panic("Attribute Error: ph->p_memsz < ph->p_filesz.");
             region_alloc(e, (void *) ph->p_va, ph->p_memsz);
-cprintf("memsz = %x\n", ph->p_memsz);
-cprintf("filesz = %x\n", ph->p_filesz);
             memset((void *) ph->p_va, 0, ph->p_memsz);
             memmove((void *) ph->p_va, binary + ph->p_offset, ph->p_filesz);
         }
@@ -409,38 +385,6 @@ cprintf("filesz = %x\n", ph->p_filesz);
 
 	// LAB 3: Your code here.
     region_alloc(e, (void *) (USTACKTOP - PGSIZE), PGSIZE);
-*/
-	struct Elf *elfhead = (struct Elf *)binary;
-	struct Proghdr *ph, *eph;
-
-	if (elfhead->e_magic != ELF_MAGIC) {
-		panic("in load_icode: ELF_MAGIC\n");
-	}
-
-	ph = (struct Proghdr *)((uint8_t *)elfhead + elfhead->e_phoff);
-	eph = ph + elfhead->e_phnum;
-
-	lcr3(PADDR((void *)e->env_pgdir));
-
-	//转到该进程的页目录/页表，把可执行代码映射到内存，并填充页表项
-	// 填充完了记得切换回到内核页表哦，亲！！
-	
-	for (; ph < eph; ph++) {
-		if (ph->p_type == ELF_PROG_LOAD) {
-			region_alloc(e, (void *)ph->p_va, ph->p_memsz);
-			memset((void *)ph->p_va, 0, ph->p_memsz);
-			memmove((void *)ph->p_va, binary+ph->p_offset, ph->p_filesz);
-		}
-	}
-
-	lcr3(PADDR((void *)kern_pgdir));
-
-	e->env_tf.tf_eip = elfhead->e_entry;
-
-	// Now map one page for the program's initial stack
-	// at virtual address USTACKTOP - PGSIZE.
-	
-	region_alloc(e, (void *)(USTACKTOP - PGSIZE), PGSIZE);
 }
 
 //
@@ -453,7 +397,6 @@ cprintf("filesz = %x\n", ph->p_filesz);
 void
 env_create(uint8_t *binary, size_t size, enum EnvType type)
 {
-/*
 	// LAB 3: Your code here.
     struct Env *e;
     int r;
@@ -465,19 +408,6 @@ env_create(uint8_t *binary, size_t size, enum EnvType type)
 
     load_icode(e, binary, size); 
     e->env_type = type;
-*/
-	struct Env *e;
-	int ret;
-
-	ret = env_alloc(&e, 0);
-
-	if (ret != 0) {
-		panic("in env_create: ret == 0\n");
-	}
-
-	e->env_type = type;
-	
-	load_icode(e, binary, size);
 }
 
 //
@@ -592,7 +522,6 @@ env_run(struct Env *e)
 	//	and make sure you have set the relevant parts of
 	//	e->env_tf to sensible values.
 
-/*
     // step 1
     if (curenv != e) {
         if (curenv && curenv->env_status == ENV_RUNNING)
@@ -604,24 +533,7 @@ env_run(struct Env *e)
     }
 
     // step 2
-    cprintf("............ %x\n", &curenv->env_tf);
-    cprintf("............ %x\n", curenv->env_tf.tf_esp);
-    cprintf("............ %x\n", curenv->env_tf.tf_eip);
     env_pop_tf(&(curenv->env_tf));
 
 	panic("env_run not yet implemented");
-*/
-	//  考虑重复切换到当前环境 
-	if (curenv != e) { // think about curenv = NULL !!
-		           // but I'm not understand this if(), it's cheat...
-		if (curenv != NULL && curenv->env_status == ENV_RUNNING){
-			curenv->env_status = ENV_RUNNABLE;
-		}
-		curenv = e;
-		curenv->env_status = ENV_RUNNING;
-		curenv->env_runs++;
-		lcr3(PADDR((void *)curenv->env_pgdir));
-	}
-
-	env_pop_tf(&e->env_tf);
 }
