@@ -21,13 +21,36 @@ struct Command {
 	int (*func)(int argc, char** argv, struct Trapframe* tf);
 };
 
+static int
+mon_octal(int argc, char **argv, struct Trapframe *tf);
+
+int
+mon_backtrace(int argc, char **argv, struct Trapframe *tf);
+
 static struct Command commands[] = {
+	{ "backtrace", "Display callbacks", mon_backtrace},
 	{ "help", "Display this list of commands", mon_help },
+	{ "octal", "Display octal", mon_octal},
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
 /***** Implementations of basic kernel monitor commands *****/
+unsigned read_eip();
+
+/***** Implementations of basic kernel monitor commands *****/
+int
+mon_octal(int argc, char **argv, struct Trapframe *tf)
+{
+	int i;
+	if (argc < 2) {
+		cprintf("syntax: octal <Decimal>\n");
+		return 0;
+	}
+	unsigned int num = strtol(argv[1], NULL, 10);
+	cprintf("octal(%u)=%o(o)\n", num, num);
+	return 0;
+}
 
 int
 mon_help(int argc, char **argv, struct Trapframe *tf)
@@ -55,6 +78,7 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 	return 0;
 }
 
+/*
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
@@ -79,6 +103,39 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 		cprintf("         %s:%d: %.*s+%d\n", info.eip_file, info.eip_line, info.eip_fn_namelen, info.eip_fn_name, info.eip_fn_addr);
 		ebp = (uint32_t*) ebp[0];
 	}
+    return 0;
+}*/
+#define J_NEXT_EBP(ebp) (*(uint *)ebp)
+#define J_ARG_N(ebp, n) (*(uint *)(ebp + n))
+
+extern unsigned int bootstacktop;
+typedef unsigned int uint;
+static struct Eipdebuginfo info = {0};
+static inline uint*
+dump_stack(uint *p)
+{
+	uint i;
+	cprintf("ebp %08x  eip %08x args", p, J_ARG_N(p, 1));
+	for (i=2; i < 7; i++) {
+		cprintf(" %08x",J_ARG_N(p,i)); 
+	}
+
+	memset(&info, 0, sizeof(info));
+	debuginfo_eip((uintptr_t)*(p+1), &info);
+	cprintf("\n");
+	return (uint *)J_NEXT_EBP(p);
+}
+int
+mon_backtrace(int argc, char **argv, struct Trapframe *tf)
+{
+	uint *p = (uint *) read_ebp();
+	uint eip = read_eip();	
+	cprintf("current eip=%08x", eip);
+	debuginfo_eip((uintptr_t) eip, &info);
+	cprintf("\n");
+	do {
+		p = dump_stack(p);
+	} while(p); // && *p != 0);
 	return 0;
 }
 
@@ -143,4 +200,15 @@ monitor(struct Trapframe *tf)
 			if (runcmd(buf, tf) < 0)
 				break;
 	}
+}
+
+// return EIP of caller.
+// does not work if inlined.
+// putting at the end of the file seems to prevent inlining.
+unsigned
+read_eip()
+{
+	uint32_t callerpc;
+	__asm __volatile("movl 4(%%ebp), %0" : "=r" (callerpc));
+	return callerpc;
 }
