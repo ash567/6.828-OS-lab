@@ -74,6 +74,8 @@
 
 // Address in page table or page directory entry
 #define PTE_ADDR(pte)	((physaddr_t) (pte) & ~0xFFF)
+// why PTE_ADDR ?
+// because the last 12 bits are control bit, should delete this bits.
 
 // Control Register flags
 #define CR0_PE		0x00000001	// Protection Enable
