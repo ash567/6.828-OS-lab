@@ -115,7 +115,7 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 #define J_NEXT_EBP(ebp) (*(uint *)ebp)
 #define J_ARG_N(ebp, n) (*(uint *)(ebp + n))
 
-extern unsigned int bootstacktop;
+//extern unsigned int bootstacktop;
 typedef unsigned int uint;
 static struct Eipdebuginfo info = {0};
 static inline uint*
