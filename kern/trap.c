@@ -73,6 +73,7 @@ trap_init(void)
 
 	SETGATE(idt[T_BRKPT], 0, GD_KT, isrs[T_BRKPT], 3);
 	SETGATE(idt[T_SYSCALL], 0, GD_KT, isrs[T_SYSCALL], 3);
+
 	// Per-CPU setup 
 	trap_init_percpu();
 }
@@ -150,27 +151,28 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+    int r;
 
 	if (tf->tf_trapno == T_PGFLT) {
 		page_fault_handler(tf);
-		return; //must return!!
+		return;
 	}
-
 	if (tf->tf_trapno == T_BRKPT) {
 		monitor(tf);
-		return;//must return !!
+		return;
 	}
-
 	if (tf->tf_trapno == T_SYSCALL) {
-		syscall(tf->tf_regs.reg_eax,\
-			tf->tf_regs.reg_edx,\
-			tf->tf_regs.reg_ecx,\
-			tf->tf_regs.reg_ebx,\
-			tf->tf_regs.reg_edi,\
-			tf->tf_regs.reg_esi);
-		return;//must return !!!!
+		r = syscall(
+            tf->tf_regs.reg_eax,
+			tf->tf_regs.reg_edx,
+			tf->tf_regs.reg_ecx,
+			tf->tf_regs.reg_ebx,
+			tf->tf_regs.reg_edi,
+			tf->tf_regs.reg_esi
+        );
+        tf->tf_regs.reg_eax = r;
+		return;
 	}
-
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
 	if (tf->tf_cs == GD_KT)
@@ -231,14 +233,15 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
+    // see env_alloc().
 	// becase the cs register's last Two bits is CPL.
-	//  00 is ring0, 11 is ring3
+	// 00 is kernal, 11 is user
 	
 	if ((tf->tf_cs & 3) == 0) {
-		panic("O... kernel has a page fault, it isn't allowed!!");
+		panic("kernel has a page fault!");
 	}
 
-	// We've already handled kernel-mode exceptions, so if we get here,
+	// We've already h:ndled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
 
 	// Destroy the environment that caused the fault.

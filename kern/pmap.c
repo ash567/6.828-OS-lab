@@ -644,23 +644,25 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
-	
 	pte_t *pte;
-	uintptr_t  va_start = (uintptr_t)ROUNDDOWN(va, PGSIZE);
-	uintptr_t  va_end   = (uintptr_t)ROUNDUP(va+len, PGSIZE);
+	uintptr_t va_start = (uintptr_t) va;
+	uintptr_t va_end = (uintptr_t) va + len;
+    uintptr_t iva;
 
-	for (; va_start < va_end; va_start += PGSIZE) {
-		if (va_start >= ULIM) {
-			user_mem_check_addr = (uintptr_t)va_start;
+	for (iva = va_start; iva < va_end; iva += PGSIZE) {
+		if (iva >= ULIM) {
+			user_mem_check_addr = (uintptr_t) iva;
 			return -E_FAULT;
 		}
 
-		pte = pgdir_walk(env->env_pgdir, (void *)va_start, false);
+		pte = pgdir_walk(env->env_pgdir, (void *) iva, 0);
 
-		if (!pte || (*pte & (perm | PTE_U)) != (perm | PTE_U)) {
-		    user_mem_check_addr = (uintptr_t)va_start;
+		//if (!pte || (*pte & (perm | PTE_U)) != (perm | PTE_U)) {
+        if (!pte || (*pte & perm) != perm) {
+		    user_mem_check_addr = (uintptr_t) iva;
 		    return -E_FAULT;
 		}
+        iva = (uintptr_t) ROUNDDOWN(iva, PGSIZE);
 	}   
 
 	return 0;

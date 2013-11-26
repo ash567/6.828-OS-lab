@@ -32,6 +32,7 @@ static struct Command commands[] = {
     { "clearmappings", "Set new mapping on a virtual address", mon_clearmappings },
     { "changepermission", "changepermission permission on mapping page", mon_changepermission },
     { "dumpcontents", "dump contents on a virtual/physical address", mon_dumpcontents },
+    { "backtrace", "test backtrace", mon_backtrace },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
