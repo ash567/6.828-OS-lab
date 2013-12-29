@@ -417,6 +417,8 @@ class Runner():
             self.gdb.cont()
             self.__react(self.reactors, timeout)
         finally:
+            os.system("killall qemu")
+            return
             # Shutdown QEMU
             try:
                 if self.gdb is None:
