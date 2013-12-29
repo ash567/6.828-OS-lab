@@ -133,7 +133,7 @@ mem_init(void)
 	i386_detect_memory();
 
 	// Remove this line when you're ready to test this function.
-	panic("mem_init: This function is not finished\n");
+	//panic("mem_init: This function is not finished\n");
 
 	//////////////////////////////////////////////////////////////////////
 	// create initial page directory.
@@ -270,8 +270,6 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
-<<<<<<< HEAD
-=======
   int i = 0;
   uint32_t kstacktop_i;
   for ( ;i < NCPU ;i ++){
@@ -279,7 +277,6 @@ mem_init_mp(void)
     boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE, 
                     PADDR(&percpu_kstacks[i]), PTE_W);
   }
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 
 }
 
@@ -320,13 +317,6 @@ page_init(void)
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
 	size_t i;
-<<<<<<< HEAD
-	for (i = 0; i < npages; i++) {
-		pages[i].pp_ref = 0;
-		pages[i].pp_link = page_free_list;
-		page_free_list = &pages[i];
-	}
-=======
 
   // 1) 
   i = 0;
@@ -365,7 +355,6 @@ page_init(void)
     pages[i].pp_link = page_free_list;
     page_free_list = &pages[i];
   }
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 }
 
 //
@@ -380,10 +369,6 @@ page_init(void)
 struct PageInfo *
 page_alloc(int alloc_flags)
 {
-<<<<<<< HEAD
-	// Fill this function in
-	return 0;
-=======
   // remove from page_free_list
   if (!page_free_list) {
     //cprintf("Out of physical memory.\n");
@@ -401,7 +386,6 @@ page_alloc(int alloc_flags)
   }
   
 	return ret;
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 }
 
 //
@@ -411,16 +395,12 @@ page_alloc(int alloc_flags)
 void
 page_free(struct PageInfo *pp)
 {
-<<<<<<< HEAD
-	// Fill this function in
-=======
   if (pp->pp_ref != 0) {
     panic("pp_ref should be 0.\n");
   }
 
   pp->pp_link = page_free_list;
   page_free_list = pp;
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 }
 
 //
@@ -459,10 +439,6 @@ page_decref(struct PageInfo* pp)
 pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
-<<<<<<< HEAD
-	// Fill this function in
-	return NULL;
-=======
   pde_t *pde;
   pte_t *pgtab;
   struct PageInfo *pp;
@@ -491,7 +467,6 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
     *pde = PADDR(pgtab) | PTE_P | PTE_W | PTE_U;
   }
 	return &pgtab[PTX(va)];
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 }
 
 //
@@ -508,8 +483,6 @@ static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
-<<<<<<< HEAD
-=======
   pte_t * pte;
   for (; size > 0 ; size -= PGSIZE) {
     pte = pgdir_walk(pgdir, (void *)va, 1);
@@ -521,7 +494,6 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
     va += PGSIZE;
     pa += PGSIZE;
   }
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 }
 
 //
@@ -553,8 +525,6 @@ int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
-<<<<<<< HEAD
-=======
   pte_t * pte;
   pte = pgdir_walk(pgdir, va, 1);
   if (!pte) 
@@ -568,7 +538,6 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
   *pte = page2pa(pp) | perm | PTE_P;
   tlb_invalidate(pgdir, va);
 
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 	return 0;
 }
 
@@ -587,9 +556,6 @@ struct PageInfo *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
 	// Fill this function in
-<<<<<<< HEAD
-	return NULL;
-=======
   pte_t * pte;
   pte = pgdir_walk(pgdir, va, 0);
   if (!pte || !(*pte & PTE_P)) 
@@ -598,7 +564,6 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
     *pte_store = pte;
 
   return pa2page(PTE_ADDR(*pte));
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 }
 
 //
@@ -620,9 +585,6 @@ void
 page_remove(pde_t *pgdir, void *va)
 {
 	// Fill this function in
-<<<<<<< HEAD
-}
-=======
   struct PageInfo * pp;
   pte_t * pte;
   pp = page_lookup(pgdir, va, &pte);
@@ -639,7 +601,6 @@ page_remove(pde_t *pgdir, void *va)
   tlb_invalidate(pgdir, va);
 
 } 
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 
 //
 // Invalidate a TLB entry, but only if the page tables being
@@ -685,9 +646,6 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-<<<<<<< HEAD
-	panic("mmio_map_region not implemented");
-=======
   void * ret = (void*)base;
   size = ROUNDUP(size, PGSIZE);
   if (base + size > MMIOLIM || base + size < base )
@@ -696,7 +654,6 @@ mmio_map_region(physaddr_t pa, size_t size)
   base += size;
   return ret;
 	//panic("mmio_map_region not implemented");
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 }
 
 static uintptr_t user_mem_check_addr;
@@ -723,8 +680,6 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
-<<<<<<< HEAD
-=======
   void * va_end = (void*)ROUNDUP(va + len, PGSIZE);
   pte_t * pte;
   for ( ; va < va_end ; va = ROUNDUP(va + PGSIZE, PGSIZE)) {
@@ -734,7 +689,6 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
       return  -E_FAULT;
     }
   }
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 
 	return 0;
 }

@@ -44,10 +44,6 @@ pgfault(struct UTrapframe *utf)
 	//   No need to explicitly delete the old page's mapping.
 
 	// LAB 4: Your code here.
-<<<<<<< HEAD
-
-	panic("pgfault not implemented");
-=======
   // allocate  PFTEMP -> new page
   r = sys_page_alloc(0, PFTEMP, PTE_U | PTE_P | PTE_W);
   if (r < 0)
@@ -68,7 +64,6 @@ pgfault(struct UTrapframe *utf)
     panic("pgfault : sys_page_unmap error : %e.\n",r);
 
   return ;
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 }
 
 //
@@ -88,9 +83,6 @@ duppage(envid_t envid, unsigned pn)
 	int r;
 
 	// LAB 4: Your code here.
-<<<<<<< HEAD
-	panic("duppage not implemented");
-=======
   void * va = (void *) (pn << PGSHIFT);
 
   // check page dir PTE_P exist
@@ -111,7 +103,6 @@ duppage(envid_t envid, unsigned pn)
   if (r < 0) 
     panic("dupage : sys_page_map erro : %e.\n", r);
 
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 	return 0;
 }
 
@@ -135,9 +126,6 @@ envid_t
 fork(void)
 {
 	// LAB 4: Your code here.
-<<<<<<< HEAD
-	panic("fork not implemented");
-=======
   envid_t envid;
   uintptr_t va;
   int r;
@@ -195,7 +183,6 @@ fork(void)
     panic("[%08x] fork : sys_env_set_status error : %e",thisenv->env_id, r);
 
   return envid;
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 }
 
 // Challenge!

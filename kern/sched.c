@@ -29,9 +29,6 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
-<<<<<<< HEAD
-
-=======
   size_t i = 0;
   size_t nxt = 0;
   idle = NULL;
@@ -52,7 +49,6 @@ sched_yield(void)
   else if (curenv && curenv->env_status == ENV_RUNNING)
     env_run(curenv);
    
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 	// sched_halt never returns
 	sched_halt();
 }

@@ -48,9 +48,6 @@
  * Lab 3: Your code here for generating entry points for the different traps.
  */
 
-<<<<<<< HEAD
-
-=======
 // check if has error code : http://pdos.csail.mit.edu/6.828/2012/readings/i386/s09_06.htm
 // or http://pdos.csail.mit.edu/6.828/2012/readings/ia32/IA32-3A.pdf Chapter 5,
 // table 5-1
@@ -95,14 +92,10 @@ TRAPHANDLER_NOEC(idt_irq12, IRQ_OFFSET + 12)
 TRAPHANDLER_NOEC(idt_irq13, IRQ_OFFSET + 13)
 TRAPHANDLER_NOEC(idt_irq14, IRQ_OFFSET + 14)
 TRAPHANDLER_NOEC(idt_irq15, IRQ_OFFSET + 15)
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 
 /*
  * Lab 3: Your code here for _alltraps
  */
-<<<<<<< HEAD
-=======
-.global _alltraps
 _alltraps :
   // Build trap frame as an argument of trap(struct Trapframe *tf)
   // in trap.c , trapno and error code are set up by TRAPHANDLER
@@ -122,5 +115,4 @@ _alltraps :
   pushl %esp
   call trap
 
->>>>>>> c2cc8d3b2fc737c3d86bb7571f9c4e22aabbe1ea
 
