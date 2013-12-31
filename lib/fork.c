@@ -81,40 +81,37 @@ static int
 duppage(envid_t envid, unsigned pn)
 {
 	int r;
-  int perm;
-
-	// LAB 4: Your code here.
-  void * va = (void *) (pn << PGSHIFT);
-
-  // check page dir PTE_P exist
-  if (!(uvpd[PDX(pn << PGSHIFT)] & PTE_P )) 
-    panic("duppage : page dir PTE_P is not set.\n");
-
-  if (uvpt[pn] & PTE_SHARE) {
-    // if PTE_SHARE, just copy the pte to child.
-    r = sys_page_map(0, va, envid, va, uvpt[pn] & PTE_SYSCALL);
-    if (r < 0)
-      panic("duppage : sys_page_map error : %e.\n",r);
-  } else if(uvpt[pn] & (PTE_W | PTE_COW)){
-    // map child's page as PTE_COW
-    perm = PTE_U | PTE_COW | PTE_P | (uvpt[pn] & PTE_AVAIL);
-    r = sys_page_map(0, va, envid, va, perm);
-    if (r < 0)
-      panic("duppage : sys_page_map error : %e.\n",r);
-   
-    // remap parent's page as PTE_COW, make PTE_W invalid.
-    r = sys_page_map(0, va, 0, va, perm);
-    if (r < 0) 
-      panic("dupage : sys_page_map erro : %e.\n", r);
-  } else {
-    // for RO pages, just copy the page mapping.
-    // 因为之前没有考虑到这个情况，导致在make run-icode的时候
-    // sh.c 中 fork() 函数在子进程中异常运行，现象是在 fork结束
-    // 之后，调度到子进程时候，不是从trapframe 保存的地方运行。
-    r = sys_page_map(0, va, envid, va, uvpt[pn] & PTE_SYSCALL);
-    if (r < 0)
-      panic("duppage : sys_page_map error : %e.\n",r);
-  }
+    int perm;
+  
+  	// LAB 4: Your code here.
+    void * va = (void *) (pn << PGSHIFT);
+  
+    // check page dir PTE_P exist
+    if (!(uvpd[PDX(pn << PGSHIFT)] & PTE_P)) 
+        panic("duppage : page dir PTE_P is not set.\n");
+  
+    if (uvpt[pn] & PTE_SHARE) {
+        // if PTE_SHARE, just copy the pte to child.
+        r = sys_page_map(0, va, envid, va, uvpt[pn] & PTE_SYSCALL);
+        if (r < 0)
+            panic("duppage : sys_page_map error : %e.\n",r);
+    } else if(uvpt[pn] & (PTE_W | PTE_COW)) {
+        // map child's page as PTE_COW
+        perm = PTE_U | PTE_COW | PTE_P | (uvpt[pn] & PTE_AVAIL);
+        r = sys_page_map(0, va, envid, va, perm);
+        if (r < 0)
+          panic("duppage : sys_page_map error : %e.\n",r);
+       
+        // remap parent's page as PTE_COW, make PTE_W invalid.
+        r = sys_page_map(0, va, 0, va, perm);
+        if (r < 0) 
+          panic("dupage : sys_page_map erro : %e.\n", r);
+    } else {
+        // for RO pages, just copy the page mapping.
+        r = sys_page_map(0, va, envid, va, uvpt[pn] & PTE_SYSCALL);
+        if (r < 0)
+          panic("duppage : sys_page_map error : %e.\n",r);
+    }
 
 	return 0;
 }
